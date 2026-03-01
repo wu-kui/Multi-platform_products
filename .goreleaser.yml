@@ -1,30 +1,33 @@
-# .goreleaser.yml
 project_name: multi-platform-products
 
-builds:
-  - env:
-      - CGO_ENABLED=1
-    goos: [linux, windows, darwin]
-    goarch: [amd64, arm64]
-    ignore:
-      - goos: windows
-        goarch: arm64   # Windows arm64 支持有限，可选忽略
-    hooks:
-      pre:
-        - fyne package --os {{ .Os }} --arch {{ .Arch }} --icon myicon.png --appID multi-platform-products --name Multi-platform_products
-      post:
-        - rm -rf fyne-cross   # 可选，清理临时文件
-
-archives:
-  - format_overrides:
-      - goos: windows
-        format: zip
-    name_template: "multi-platform-products-{{ .Os }}-{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}-{{ .Tag }}"
-    files:
-      - LICENSE*
-      - README*
+# 不再需要 builds 部分，因为 fyne-cross 已经处理了构建和打包
+# 我们只用 goreleaser 来创建 GitHub Release 并上传 artifacts
 
 release:
-  mode: replace
   draft: false
   prerelease: false
+
+archives:
+  # 如果 fyne-cross 输出的文件已经是压缩包，我们可以直接用
+  # 但这里我们让 goreleaser 扫描 artifacts 目录下的文件
+  format_overrides:
+    - goos: windows
+      format: zip
+  name_template: "{{ .ProjectName }}-{{ .Os }}-{{ .Arch }}-{{ .Tag }}"
+
+# 告诉 goreleaser 上传哪些文件（匹配 fyne-cross 输出的）
+universal_binaries: []  # 不需要
+
+# 可选：添加 changelog、checksum 等
+changelog:
+  skip: true  # 如果不需要自动 changelog
+
+checksum:
+  name_template: 'checksums.txt'
+
+snapshot:
+  name_template: "{{ incpatch .Version }}-next"
+
+# artifacts 来自 workflow 中的 artifacts/ 目录
+# goreleaser 默认会找 dist/ 但我们可以配置
+# 或者 workflow 已 mv 到 artifacts/，goreleaser 会自动找当前目录文件

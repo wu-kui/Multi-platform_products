@@ -1,69 +1,63 @@
-name: Build & Release Multi-platform Products
+name: Release Multi-platform Products
 
 on:
   push:
     tags:
-      - 'v*.*.*'           # 只在 push vX.Y.Z 格式的 tag 时运行
+      - 'v*'
 
 permissions:
-  contents: write        # 必须，用于创建 Release 和上传资产
+  contents: write
 
 jobs:
   release:
-    runs-on: ubuntu-24.04   # 用 Linux runner 完成全部跨平台构建（最省钱）
+    runs-on: ubuntu-24.04
 
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0     # goreleaser 需要 tags 历史
+          fetch-depth: 0
 
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23'   # 或你的 Go 版本，建议 1.22+
+          go-version: '1.23'
 
       - name: Install fyne-cross
         run: go install github.com/fyne-io/fyne-cross@latest
 
-      - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v6   # 或升级到 @v7 更好
-        with:
-          distribution: goreleaser              # 默认就是这个，可省略
-          version: '~> v2'                      # 或 latest / nightly
-          args: release --clean                 # ← 这个是必须的！
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Set up Docker (fyne-cross 需要)
+      - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build & Package with fyne-cross
+      - name: Build with fyne-cross
         run: |
-          # Linux (amd64 + arm64)
-          fyne-cross linux --arch=amd64,arm64 --app-id multi-platform-products --icon myicon.png --output dist
+          # Linux (amd64 + arm64) → tar.gz
+          fyne-cross linux --arch=amd64,arm64 --app-id multi-platform-products --icon myicon.png --name "Multi-platform Products" --output dist
 
-          # Windows (amd64)
-          fyne-cross windows --arch=amd64 --app-id multi-platform-products --icon myicon.png --output dist
+          # Windows (amd64) → zip
+          fyne-cross windows --arch=amd64 --app-id multi-platform-products --icon myicon.png --name "Multi-platform Products" --output dist
 
-          # macOS (universal: amd64 + arm64)
-          fyne-cross darwin --arch=amd64,arm64 --app-id multi-platform-products --icon myicon.png --output dist
+          # macOS (universal amd64+arm64) → zip
+          fyne-cross darwin --arch=amd64,arm64 --app-id multi-platform-products --icon myicon.png --name "Multi-platform Products" --output dist
 
-      - name: Prepare artifacts for goreleaser
+      - name: Prepare artifacts
         run: |
-          mkdir -p dist/artifacts
-          # Linux tar.gz
-          find fyne-cross/dist/linux* -name "*.tar.gz" -exec mv {} dist/artifacts/multi-platform-products-linux-{{ .Tag }}.tar.gz \;
-          # Windows zip
-          find fyne-cross/dist/windows* -name "*.zip" -exec mv {} dist/artifacts/multi-platform-products-windows-amd64-{{ .Tag }}.zip \;
-          # macOS zip (universal)
-          find fyne-cross/dist/darwin* -name "*.zip" -exec mv {} dist/artifacts/multi-platform-products-macos-universal-{{ .Tag }}.zip \;
+          mkdir -p artifacts
+          mv fyne-cross/dist/*/*.tar.gz artifacts/ 2>/dev/null || true
+          mv fyne-cross/dist/*/*.zip artifacts/ 2>/dev/null || true
+          # 可选：重命名文件更友好（或保持原样）
+          for f in artifacts/*; do
+            if [[ -f "$f" ]]; then
+              newname=$(echo "$f" | sed 's/\(.*\)\./multi-platform-products-\1-v${{ github.ref_name }}./')
+              mv "$f" "$newname" || true
+            fi
+          done
 
-      - name: Create GitHub Release & Upload
-        uses: goreleaser/goreleaser-action@v6
+      - name: Run GoReleaser to create release & upload
+        uses: goreleaser/goreleaser-action@v7
         with:
           distribution: goreleaser
           version: '~> v2'
-          args: release --clean --skip=validate --skip=publish --skip=announce
+          args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
