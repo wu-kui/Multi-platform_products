@@ -35,10 +35,10 @@ jobs:
           fyne-cross linux --arch=amd64,arm64 --app-id multi-platform-products --icon myicon.png --name "Multi-platform Products" --output dist
 
           # Windows (amd64) → zip
-          fyne-cross windows --arch=amd64 --app-id multi-platform-products --icon myicon.png --name "Multi-platform Products" --output dist
+          #fyne-cross windows --arch=amd64 --app-id multi-platform-products --icon myicon.png --name "Multi-platform Products" --output dist
 
           # macOS (universal amd64+arm64) → zip
-          fyne-cross darwin --arch=amd64,arm64 --app-id multi-platform-products --icon myicon.png --name "Multi-platform Products" --output dist
+          #fyne-cross darwin --arch=amd64,arm64 --app-id multi-platform-products --icon myicon.png --name "Multi-platform Products" --output dist
 
       - name: Prepare artifacts
         run: |
