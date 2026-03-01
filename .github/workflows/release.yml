@@ -37,15 +37,29 @@ jobs:
           echo "Go version:"
           go version
 
-          # Linux (amd64 + arm64) → tar.gz
-          fyne-cross linux --arch=amd64,arm64 --app-id multi-platform-products --icon myicon.png --name "Multi-platform Products" --output dist --no-cache
+          # Linux
+          fyne-cross linux --arch=amd64,arm64 \
+            --app-id com.wukui.multiplatformproducts \
+            --icon myicon.png \
+            --name "Multi-platform Products" \
+            --output dist \
+            --no-cache
 
-          # Windows (amd64) → zip
-          fyne-cross windows --arch=amd64 --app-id multi-platform-products --icon myicon.png --name "Multi-platform Products" --output dist --no-cache
+          # Windows（这里是报错的地方，必须改）
+          fyne-cross windows --arch=amd64 \
+            --app-id com.wukui.multiplatformproducts \
+            --icon myicon.png \
+            --name "Multi-platform Products" \
+            --output dist \
+            --no-cache
 
-          # macOS (universal amd64+arm64) → zip
-          fyne-cross darwin --arch=amd64,arm64 --app-id multi-platform-products --icon myicon.png --name "Multi-platform Products" --output dist --no-cache
-
+          # macOS
+          fyne-cross darwin --arch=amd64,arm64 \
+            --app-id com.wukui.multiplatformproducts \
+            --icon myicon.png \
+            --name "Multi-platform Products" \
+            --output dist \
+            --no-cache
       - name: Prepare artifacts
         run: |
           mkdir -p artifacts

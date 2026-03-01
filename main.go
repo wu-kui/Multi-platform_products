@@ -53,8 +53,9 @@ func guiMode() {
 		appID = "helloworld"
 	}
 
-	myApp := app.NewWithID(appID)
-	myWindow := myApp.NewWindow("Hello World")
+	// 在 main 函数开头替换原来的 app.New()
+	myApp := app.NewWithID("com.wukui.multiplatformproducts")  // 与 --app-id 保持一致
+	myWindow := myApp.NewWindow("Multi-platform Products")
 
 	// 状态文本
 	label := widget.NewLabel("hello world")
