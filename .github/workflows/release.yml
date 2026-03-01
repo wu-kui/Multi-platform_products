@@ -21,7 +21,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
+          go-version: '1.24'  # 改为 1.24 以兼容 fyne-cross 镜像（如果你的 go.mod 已降级）
 
       - name: Install fyne-cross
         run: go install github.com/fyne-io/fyne-cross@latest
@@ -31,27 +31,34 @@ jobs:
 
       - name: Build with fyne-cross
         run: |
+          echo "fyne-cross version:"
+          fyne-cross version || true
+
+          echo "Go version:"
+          go version
+
           # Linux (amd64 + arm64) → tar.gz
-          fyne-cross linux --arch=amd64,arm64 --app-id multi-platform-products --icon myicon.png --name "Multi-platform Products" --output dist
+          fyne-cross linux --arch=amd64,arm64 --app-id multi-platform-products --icon myicon.png --name "Multi-platform Products" --output dist --no-cache
 
           # Windows (amd64) → zip
-          #fyne-cross windows --arch=amd64 --app-id multi-platform-products --icon myicon.png --name "Multi-platform Products" --output dist
+          fyne-cross windows --arch=amd64 --app-id multi-platform-products --icon myicon.png --name "Multi-platform Products" --output dist --no-cache
 
           # macOS (universal amd64+arm64) → zip
-          #fyne-cross darwin --arch=amd64,arm64 --app-id multi-platform-products --icon myicon.png --name "Multi-platform Products" --output dist
+          fyne-cross darwin --arch=amd64,arm64 --app-id multi-platform-products --icon myicon.png --name "Multi-platform Products" --output dist --no-cache
 
       - name: Prepare artifacts
         run: |
           mkdir -p artifacts
           mv fyne-cross/dist/*/*.tar.gz artifacts/ 2>/dev/null || true
           mv fyne-cross/dist/*/*.zip artifacts/ 2>/dev/null || true
-          # 可选：重命名文件更友好（或保持原样）
+          # 重命名文件（可选，但让文件名更友好）
           for f in artifacts/*; do
             if [[ -f "$f" ]]; then
-              newname=$(echo "$f" | sed 's/\(.*\)\./multi-platform-products-\1-v${{ github.ref_name }}./')
+              newname=$(echo "$f" | sed "s/\(.*\)\./multi-platform-products-\1-v${{ github.ref_name }}./")
               mv "$f" "$newname" || true
             fi
           done
+          ls -la artifacts/  # 调试：列出生成的文件
 
       - name: Run GoReleaser to create release & upload
         uses: goreleaser/goreleaser-action@v7
