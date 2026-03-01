@@ -1,0 +1,30 @@
+# .goreleaser.yml
+project_name: multi-platform-products
+
+builds:
+  - env:
+      - CGO_ENABLED=1
+    goos: [linux, windows, darwin]
+    goarch: [amd64, arm64]
+    ignore:
+      - goos: windows
+        goarch: arm64   # Windows arm64 支持有限，可选忽略
+    hooks:
+      pre:
+        - fyne package --os {{ .Os }} --arch {{ .Arch }} --icon myicon.png --appID multi-platform-products --name Multi-platform_products
+      post:
+        - rm -rf fyne-cross   # 可选，清理临时文件
+
+archives:
+  - format_overrides:
+      - goos: windows
+        format: zip
+    name_template: "multi-platform-products-{{ .Os }}-{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}-{{ .Tag }}"
+    files:
+      - LICENSE*
+      - README*
+
+release:
+  mode: replace
+  draft: false
+  prerelease: false

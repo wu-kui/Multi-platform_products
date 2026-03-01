@@ -1,0 +1,66 @@
+name: Build & Release Multi-platform Products
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'           # 只在 push vX.Y.Z 格式的 tag 时运行
+
+permissions:
+  contents: write        # 必须，用于创建 Release 和上传资产
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04   # 用 Linux runner 完成全部跨平台构建（最省钱）
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0     # goreleaser 需要 tags 历史
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'   # 或你的 Go 版本，建议 1.22+
+
+      - name: Install fyne-cross
+        run: go install github.com/fyne-io/fyne-cross@latest
+
+      - name: Install goreleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          installation: true
+          version: '~> v2'
+
+      - name: Set up Docker (fyne-cross 需要)
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build & Package with fyne-cross
+        run: |
+          # Linux (amd64 + arm64)
+          fyne-cross linux --arch=amd64,arm64 --app-id multi-platform-products --icon myicon.png --output dist
+
+          # Windows (amd64)
+          fyne-cross windows --arch=amd64 --app-id multi-platform-products --icon myicon.png --output dist
+
+          # macOS (universal: amd64 + arm64)
+          fyne-cross darwin --arch=amd64,arm64 --app-id multi-platform-products --icon myicon.png --output dist
+
+      - name: Prepare artifacts for goreleaser
+        run: |
+          mkdir -p dist/artifacts
+          # Linux tar.gz
+          find fyne-cross/dist/linux* -name "*.tar.gz" -exec mv {} dist/artifacts/multi-platform-products-linux-{{ .Tag }}.tar.gz \;
+          # Windows zip
+          find fyne-cross/dist/windows* -name "*.zip" -exec mv {} dist/artifacts/multi-platform-products-windows-amd64-{{ .Tag }}.zip \;
+          # macOS zip (universal)
+          find fyne-cross/dist/darwin* -name "*.zip" -exec mv {} dist/artifacts/multi-platform-products-macos-universal-{{ .Tag }}.zip \;
+
+      - name: Create GitHub Release & Upload
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: '~> v2'
+          args: release --clean --skip=validate --skip=publish --skip=announce
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
